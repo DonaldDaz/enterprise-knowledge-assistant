@@ -22,7 +22,7 @@ flowchart LR
 
 1. Il token firmato identifica il ruolo. Il backend controlla frequenza e budget stimato.
 2. La query SQL unisce sezioni e documenti, impone `role = ANY(documents.roles)` (o il ruolo amministratore) e ordina le sole sezioni ammesse con la distanza coseno `<=>`.
-3. Il provider dimostrativo sceglie una frase del corpus con sufficiente sovrapposizione lessicale. Restituisce la stessa frase come risposta e citazione.
+3. Il provider locale sceglie una frase del corpus con sufficiente sovrapposizione lessicale. Restituisce la stessa frase come risposta e citazione.
 4. Se non esiste evidenza sufficiente, il provider restituisce un'astensione e nessuna citazione.
 5. Il backend salva solo ruolo, latenza, astensione e costo stimato; OpenTelemetry registra solo conteggi e stati delle fasi.
 

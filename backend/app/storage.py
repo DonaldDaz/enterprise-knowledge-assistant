@@ -89,7 +89,7 @@ def ingest(title: str, filename: str, data: bytes, roles: list[str], *, document
     return document_id, len(parts)
 
 
-def seed_demo(demo_dir: Path):
+def seed_documents(data_dir: Path):
     with connection() as db:
         existing = db.execute("SELECT count(*) AS n FROM documents").fetchone()["n"]
     if existing:
@@ -99,5 +99,5 @@ def seed_demo(demo_dir: Path):
         ("people-handbook.md", "Manuale persone", ["hr"]),
         ("budget-policy.md", "Budget di progetto", ["finance"]),
     ]:
-        path = demo_dir / name
+        path = data_dir / name
         ingest(title, name, path.read_bytes(), roles)

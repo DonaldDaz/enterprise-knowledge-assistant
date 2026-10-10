@@ -35,7 +35,7 @@ type Stats = {
 };
 type Section = { ordinal: number; heading: string; content: string };
 
-const demoAccounts: { role: Role; label: string; initials: string }[] = [
+const accounts: { role: Role; label: string; initials: string }[] = [
   { role: "employee", label: "Dipendente", initials: "DI" },
   { role: "hr", label: "Team HR", initials: "HR" },
   { role: "finance", label: "Finance", initials: "FI" },
@@ -273,14 +273,14 @@ function App() {
             <Icon name="spark" size={22} />
           </span>
           <span>
-            knowledge<span className="brand-accent">lab</span>
-            <small>ENTERPRISE RAG DEMO</small>
+            knowledge<span className="brand-accent">hub</span>
+            <small>ENTERPRISE ASSISTANT</small>
           </span>
         </a>
-        <div className="sidebar-label">ESPLORA LA DEMO</div>
+        <div className="sidebar-label">NAVIGAZIONE</div>
         <nav className="nav">
-          <a href="#playground" className="active">
-            <Icon name="spark" size={18} /> Playground
+          <a href="#assistant" className="active">
+            <Icon name="spark" size={18} /> Assistente
           </a>
           <a href="#documents">
             <Icon name="file" size={18} /> Documenti
@@ -304,11 +304,11 @@ function App() {
       <main id="top" className="main-content">
         <header className="topbar">
           <div className="breadcrumb">
-            WORKSPACE <span>/</span> DEMO INTERATTIVA
+            WORKSPACE <span>/</span> KNOWLEDGE ASSISTANT
           </div>
           <div className="topbar-right">
             <span className="live-pill">
-              <span className="status-dot" /> DEMO LIVE
+              <span className="status-dot" /> SERVIZIO ATTIVO
             </span>
             <a
               href="http://localhost:16686"
@@ -324,7 +324,7 @@ function App() {
           <div className="intro-grid">
             <div>
               <div className="eyebrow">
-                <span className="eyebrow-line" /> LABORATORIO DIDATTICO / 01
+                <span className="eyebrow-line" /> DOCUMENTI E RISPOSTE / 01
               </div>
               <h1>
                 La conoscenza aziendale,
@@ -332,7 +332,7 @@ function App() {
                 <em>con le fonti in vista.</em>
               </h1>
               <p className="lead">
-                Carica documenti, fai domande e osserva come un assistente RAG
+                Carica documenti e fai domande. L'assistente RAG
                 recupera solo le informazioni autorizzate. Ogni risposta è
                 verificabile; se manca una fonte, si ferma.
               </p>
@@ -388,14 +388,13 @@ function App() {
             </div>
           </section>
 
-          <section id="playground" className="section playground">
+          <section id="assistant" className="section assistant">
             <div className="section-head">
               <div>
-                <div className="eyebrow">PROVA IL FLUSSO</div>
-                <h2>Playground</h2>
+                <div className="eyebrow">DOMANDE E RISPOSTE</div>
+                <h2>Assistente</h2>
                 <p>
-                  Passa da un ruolo all'altro per vedere come cambiano le fonti
-                  disponibili.
+                  Le fonti disponibili dipendono dal ruolo selezionato.
                 </p>
               </div>
               <span className="section-number">01 / 03</span>
@@ -411,9 +410,9 @@ function App() {
                     <p>L'accesso viene controllato prima della ricerca.</p>
                   </div>
                 </div>
-                <div className="field-label">STAI ESPLORANDO COME</div>
+                <div className="field-label">RUOLO ATTIVO</div>
                 <div className="role-row">
-                  {demoAccounts.map((account) => (
+                  {accounts.map((account) => (
                     <button
                       key={account.role}
                       onClick={() => switchRole(account.role)}
@@ -427,7 +426,7 @@ function App() {
                 {!session && (
                   <form className="login-form" onSubmit={login}>
                     <label className="field-label" htmlFor="password">
-                      PASSWORD DEMO · VEDI .ENV.EXAMPLE
+                      PASSWORD · VEDI .ENV.EXAMPLE
                     </label>
                     <div className="login-row">
                       <input
@@ -638,7 +637,7 @@ function App() {
                   />
                   <div className="field-label">VISIBILE A</div>
                   <div className="checkbox-row">
-                    {demoAccounts
+                    {accounts
                       .filter((a) => a.role !== "admin")
                       .map((account) => (
                         <label key={account.role}>
@@ -772,7 +771,7 @@ function App() {
           </section>
           <footer>
             <span>
-              KNOWLEDGE LAB <b>·</b> Demo RAG con documenti sintetici
+              KNOWLEDGE HUB <b>·</b> Documenti sintetici
             </span>
             <span>FastAPI · pgvector · MinIO · React · OpenTelemetry</span>
           </footer>

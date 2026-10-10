@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from .config import ROLES, settings
 from .rag import answer_provider, embedding_provider, vector_literal
 from .security import admin_user, authenticate, current_user
-from .storage import connection, ingest, initialize, seed_demo
+from .storage import connection, ingest, initialize, seed_documents
 from .telemetry import tracer
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
@@ -22,9 +22,9 @@ logger = logging.getLogger("knowledge")
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize()
-    demo_dir = Path("/app/demo")
-    if demo_dir.exists():
-        seed_demo(demo_dir)
+    data_dir = Path("/app/data")
+    if data_dir.exists():
+        seed_documents(data_dir)
     yield
 
 

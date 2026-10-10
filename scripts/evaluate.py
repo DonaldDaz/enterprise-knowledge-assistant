@@ -1,4 +1,4 @@
-"""Run the public demo dataset against the live API and print a compact quality report."""
+"""Run the evaluation dataset against the live API and print a quality report."""
 
 import json
 import math
@@ -10,7 +10,7 @@ import urllib.request
 from pathlib import Path
 
 BASE = os.getenv("API_URL", "http://localhost:8000")
-DATASET = Path(__file__).resolve().parents[1] / "demo" / "questions.json"
+DATASET = Path(__file__).resolve().parents[1] / "data" / "questions.json"
 
 
 def post(path, data, token=None, form=False):
