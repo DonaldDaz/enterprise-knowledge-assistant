@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure synthetic demo credentials
+        run: cp .env.example .env
+      - name: Build and start stack
+        run: docker compose up --build -d --wait
+      - name: Backend lint
+        run: docker compose exec -T api ruff check app tests
+      - name: Backend tests
+        run: docker compose exec -T api pytest -q tests
+      - name: Evaluation dataset
+        run: python3 scripts/evaluate.py
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail=100
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v

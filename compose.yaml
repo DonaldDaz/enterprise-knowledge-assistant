@@ -1,0 +1,79 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: knowledge
+      POSTGRES_USER: knowledge
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U knowledge -d knowledge"]
+      interval: 3s
+      retries: 20
+
+  minio:
+    # Community rebuild: upstream removed anonymous pulls of its container image.
+    image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "mc alias set local http://127.0.0.1:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD >/dev/null && mc ready local"]
+      interval: 3s
+      retries: 20
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.67.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686"
+
+  api:
+    build: ./backend
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Copy .env.example to .env}
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Copy .env.example to .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Copy .env.example to .env}
+      JWT_SECRET: ${JWT_SECRET:?Copy .env.example to .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Copy .env.example to .env}
+      HR_PASSWORD: ${HR_PASSWORD:?Copy .env.example to .env}
+      FINANCE_PASSWORD: ${FINANCE_PASSWORD:?Copy .env.example to .env}
+      EMPLOYEE_PASSWORD: ${EMPLOYEE_PASSWORD:?Copy .env.example to .env}
+      MAX_REQUESTS_PER_MINUTE: ${MAX_REQUESTS_PER_MINUTE:-20}
+      MAX_REQUEST_COST_USD: ${MAX_REQUEST_COST_USD:-0.02}
+      MAX_DAILY_COST_USD: ${MAX_DAILY_COST_USD:-1.00}
+      ESTIMATED_USD_PER_1K_TOKENS: ${ESTIMATED_USD_PER_1K_TOKENS:-0}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318/v1/traces}
+    volumes:
+      - ./demo:/app/demo:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      retries: 20
+
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      api: {condition: service_healthy}
+
+volumes:
+  postgres_data:
+  minio_data:

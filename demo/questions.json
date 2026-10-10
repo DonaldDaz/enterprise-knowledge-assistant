@@ -1,0 +1,8 @@
+[
+  {"role":"employee","question":"Qual è il limite per un hotel per notte?","expected_document":"Trasferte e rimborsi","expected_section":"Pernottamento","expected_answer":"140 euro","abstain":false},
+  {"role":"employee","question":"Entro quanti giorni si rimborsano le spese di viaggio?","expected_document":"Trasferte e rimborsi","expected_section":"Rimborso delle spese","expected_answer":"30 giorni","abstain":false},
+  {"role":"hr","question":"Quando va inviata la richiesta di congedo parentale?","expected_document":"Manuale persone","expected_section":"Congedo parentale","expected_answer":"15 giorni","abstain":false},
+  {"role":"finance","question":"Quali spese di progetto richiedono approvazione Finance?","expected_document":"Budget di progetto","expected_section":"Approvazione budget","expected_answer":"5000 euro","abstain":false},
+  {"role":"employee","question":"Quando va inviata la richiesta di congedo parentale?","abstain":true},
+  {"role":"employee","question":"Qual è il colore del logo aziendale?","abstain":true}
+]
