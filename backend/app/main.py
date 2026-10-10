@@ -56,7 +56,7 @@ def health():
 def login(form: OAuth2PasswordRequestForm = Depends()):
     result = authenticate(form.username, form.password)
     if not result:
-        raise HTTPException(401, "Credenziali non valide")
+        raise HTTPException(401, "Invalid credentials")
     return result
 
 
@@ -74,12 +74,12 @@ def upload_document(
 ):
     allowed = sorted(set(part.strip() for part in roles.split(",") if part.strip()))
     if not allowed or any(role not in ROLES for role in allowed):
-        raise HTTPException(422, f"Scegli almeno un ruolo tra: {', '.join(ROLES)}")
+        raise HTTPException(422, f"Choose at least one role from: {', '.join(ROLES)}")
     if not title.strip() or len(title) > 120:
-        raise HTTPException(422, "Titolo obbligatorio (massimo 120 caratteri)")
+        raise HTTPException(422, "A title is required (maximum 120 characters)")
     data = file.file.read(1_000_001)
     if len(data) > 1_000_000:
-        raise HTTPException(413, "Dimensione massima: 1 MB")
+        raise HTTPException(413, "Maximum file size: 1 MB")
     with tracer.start_as_current_span("document.ingest") as span:
         span.set_attribute("document.bytes", len(data))
         span.set_attribute("document.role_count", len(allowed))
@@ -109,7 +109,7 @@ def read_document(document_id: UUID, user: dict = Depends(current_user)):
     with connection() as db:
         row = db.execute("SELECT id,title,roles,status FROM documents WHERE id=%s AND (%s=ANY(roles) OR %s='admin')", (document_id, user["role"], user["role"])).fetchone()
         if not row:
-            raise HTTPException(404, "Documento non disponibile")
+            raise HTTPException(404, "Document not available")
         rows = db.execute("SELECT ordinal,heading,content FROM sections WHERE document_id=%s ORDER BY ordinal", (document_id,)).fetchall()
     return {**row, "sections": rows}
 
@@ -125,9 +125,9 @@ def ask(payload: Question, user: dict = Depends(current_user)):
         recent = db.execute("SELECT count(*)::int AS n FROM requests WHERE username=%s AND created_at>now()-interval '1 minute'", (username,)).fetchone()["n"]
         daily = db.execute("SELECT coalesce(sum(estimated_cost_usd),0) AS total FROM requests WHERE created_at>=date_trunc('day',now())", ()).fetchone()["total"]
     if recent >= settings.max_requests_per_minute:
-        raise HTTPException(429, "Limite di richieste al minuto raggiunto")
+        raise HTTPException(429, "Per-minute request limit reached")
     if estimated_cost > settings.max_request_cost_usd or daily + estimated_cost > settings.max_daily_cost_usd:
-        raise HTTPException(429, "Budget stimato esaurito")
+        raise HTTPException(429, "Estimated cost budget exhausted")
 
     with tracer.start_as_current_span("rag.answer") as span:
         span.set_attribute("enduser.role", role)

@@ -9,15 +9,14 @@ from typing import Protocol
 
 DIMENSIONS = 128
 STOPWORDS = {
-    "a", "al", "alla", "and", "are", "che", "come", "con", "dei", "del", "della",
-    "di", "do", "does", "e", "for", "gli", "how", "i", "il", "in", "is", "la",
-    "le", "lo", "of", "per", "quale", "quali", "qual", "the", "to", "un", "una",
-    "what", "when", "where", "who", "è", "sono", "si", "può", "posso",
+    "a", "an", "and", "are", "as", "at", "be", "by", "do", "does", "for",
+    "from", "how", "i", "in", "is", "it", "of", "on", "or", "the", "to",
+    "was", "were", "what", "when", "where", "which", "who", "with",
 }
 
 
 def terms(text: str) -> set[str]:
-    return {word for word in re.findall(r"[\wÀ-ÿ]+", text.lower()) if len(word) > 2 and word not in STOPWORDS}
+    return {word for word in re.findall(r"\w+", text.lower()) if len(word) > 2 and word not in STOPWORDS}
 
 
 class EmbeddingProvider(Protocol):
@@ -53,17 +52,17 @@ class ExtractiveAnswer:
     def answer(self, question: str, evidence: list[dict]) -> tuple[str, list[dict]]:
         query = terms(question)
         if not query:
-            return "Non posso rispondere con le fonti disponibili.", []
+            return "I can't answer from the available sources.", []
         candidates = []
         for item in evidence:
-            # The sentence is the smallest verifiable unit in this didactic corpus.
+            # A sentence is the smallest unit we can quote and verify.
             for sentence in re.split(r"(?<=[.!?])\s+|\n+", item["content"]):
                 sentence = sentence.strip().lstrip("-• ")
                 overlap = len(query & terms(sentence)) / len(query)
                 if len(query & terms(sentence)) >= min(2, len(query)) and overlap >= self.min_overlap:
                     candidates.append((overlap, item["similarity"], sentence, item))
         if not candidates:
-            return "Non posso rispondere con le fonti disponibili.", []
+            return "I can't answer from the available sources.", []
         _, _, sentence, item = max(candidates, key=lambda row: (row[0], row[1]))
         citation = {"document_id": item["document_id"], "title": item["title"], "section": item["section"], "quote": sentence}
         return sentence, [citation]
@@ -79,16 +78,16 @@ def sections_from_text(text: str, suffix: str) -> list[tuple[str, str]]:
     """Keep headings as citation anchors; split long bodies at paragraph boundaries."""
     if suffix == ".pdf":
         paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-        return [section for i, paragraph in enumerate(paragraphs, 1) for section in split_section(f"Paragrafo {i}", paragraph)]
+        return [section for i, paragraph in enumerate(paragraphs, 1) for section in split_section(f"Paragraph {i}", paragraph)]
 
     sections: list[tuple[str, str]] = []
-    heading = "Introduzione"
+    heading = "Introduction"
     body: list[str] = []
     for line in text.splitlines():
         if line.startswith("#"):
             if body:
                 sections.extend(split_section(heading, "\n".join(body)))
-            heading = line.lstrip("# ").strip() or "Senza titolo"
+            heading = line.lstrip("# ").strip() or "Untitled"
             body = []
         else:
             body.append(line)

@@ -1,8 +1,8 @@
 [
-  {"role":"employee","question":"Qual è il limite per un hotel per notte?","expected_document":"Trasferte e rimborsi","expected_section":"Pernottamento","expected_answer":"140 euro","abstain":false},
-  {"role":"employee","question":"Entro quanti giorni si rimborsano le spese di viaggio?","expected_document":"Trasferte e rimborsi","expected_section":"Rimborso delle spese","expected_answer":"30 giorni","abstain":false},
-  {"role":"hr","question":"Quando va inviata la richiesta di congedo parentale?","expected_document":"Manuale persone","expected_section":"Congedo parentale","expected_answer":"15 giorni","abstain":false},
-  {"role":"finance","question":"Quali spese di progetto richiedono approvazione Finance?","expected_document":"Budget di progetto","expected_section":"Approvazione budget","expected_answer":"5000 euro","abstain":false},
-  {"role":"employee","question":"Quando va inviata la richiesta di congedo parentale?","abstain":true},
-  {"role":"employee","question":"Qual è il colore del logo aziendale?","abstain":true}
+  {"role":"employee","question":"What is the nightly hotel limit?","expected_document":"Travel and Expense Policy","expected_section":"Accommodation","expected_answer":"140 euros","abstain":false},
+  {"role":"employee","question":"Within how many days are travel expenses reimbursed?","expected_document":"Travel and Expense Policy","expected_section":"Expense reimbursement","expected_answer":"30 days","abstain":false},
+  {"role":"hr","question":"How many days before parental leave must the request be submitted?","expected_document":"People Handbook","expected_section":"Parental leave","expected_answer":"15 days","abstain":false},
+  {"role":"finance","question":"Which project expenses require Finance approval?","expected_document":"Project Budget Policy","expected_section":"Budget approval","expected_answer":"5,000 euros","abstain":false},
+  {"role":"employee","question":"How many days before parental leave must the request be submitted?","abstain":true},
+  {"role":"employee","question":"What color is the company logo?","abstain":true}
 ]

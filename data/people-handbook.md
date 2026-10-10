@@ -1,7 +1,7 @@
-# Congedo parentale
+# Parental leave
 
-La richiesta di congedo parentale deve essere inviata al team HR almeno 15 giorni prima della data prevista.
+The parental leave request must be submitted to the HR team at least 15 days before the planned start date.
 
 # Onboarding
 
-Il team HR prepara l'account di prova e la checklist di onboarding cinque giorni prima dell'ingresso.
+The HR team prepares the temporary account and onboarding checklist five days before the employee starts.

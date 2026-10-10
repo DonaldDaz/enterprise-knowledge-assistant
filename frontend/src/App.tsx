@@ -36,17 +36,17 @@ type Stats = {
 type Section = { ordinal: number; heading: string; content: string };
 
 const accounts: { role: Role; label: string; initials: string }[] = [
-  { role: "employee", label: "Dipendente", initials: "DI" },
+  { role: "employee", label: "Employee", initials: "EM" },
   { role: "hr", label: "Team HR", initials: "HR" },
   { role: "finance", label: "Finance", initials: "FI" },
   { role: "admin", label: "Admin", initials: "AD" },
 ];
 
 const prompts = [
-  "Qual è il limite per un hotel per notte?",
-  "Quando va inviata la richiesta di congedo parentale?",
-  "Quali spese di progetto richiedono approvazione Finance?",
-  "Qual è il colore del logo aziendale?",
+  "What is the nightly hotel limit?",
+  "How many days before parental leave must the request be submitted?",
+  "Which project expenses require Finance approval?",
+  "What color is the company logo?",
 ];
 
 async function request<T>(
@@ -63,7 +63,7 @@ async function request<T>(
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || `Errore ${response.status}`);
+    throw new Error(error.detail || `Error ${response.status}`);
   }
   return response.json() as Promise<T>;
 }
@@ -277,27 +277,27 @@ function App() {
             <small>ENTERPRISE ASSISTANT</small>
           </span>
         </a>
-        <div className="sidebar-label">NAVIGAZIONE</div>
+        <div className="sidebar-label">NAVIGATION</div>
         <nav className="nav">
           <a href="#assistant" className="active">
-            <Icon name="spark" size={18} /> Assistente
+            <Icon name="spark" size={18} /> Assistant
           </a>
           <a href="#documents">
-            <Icon name="file" size={18} /> Documenti
+            <Icon name="file" size={18} /> Documents
           </a>
           <a href="#how-it-works">
-            <Icon name="database" size={18} /> Come funziona
+            <Icon name="database" size={18} /> How it works
           </a>
           {session?.role === "admin" && (
             <a href="#admin">
-              <Icon name="pulse" size={18} /> Amministrazione
+              <Icon name="pulse" size={18} /> Administration
             </a>
           )}
         </nav>
         <div className="sidebar-bottom">
-          <span className="status-dot" /> Sistema pronto
+          <span className="status-dot" /> System ready
           <br />
-          <small>Provider locale · nessun costo API</small>
+          <small>Local provider · no API charges</small>
         </div>
       </aside>
 
@@ -308,7 +308,7 @@ function App() {
           </div>
           <div className="topbar-right">
             <span className="live-pill">
-              <span className="status-dot" /> SERVIZIO ATTIVO
+              <span className="status-dot" /> SERVICE ACTIVE
             </span>
             <a
               href="http://localhost:16686"
@@ -316,7 +316,7 @@ function App() {
               rel="noreferrer"
               className="top-link"
             >
-              Apri traces ↗
+              Open traces ↗
             </a>
           </div>
         </header>
@@ -324,27 +324,27 @@ function App() {
           <div className="intro-grid">
             <div>
               <div className="eyebrow">
-                <span className="eyebrow-line" /> DOCUMENTI E RISPOSTE / 01
+                <span className="eyebrow-line" /> DOCUMENTS AND ANSWERS / 01
               </div>
               <h1>
-                La conoscenza aziendale,
+                Enterprise knowledge,
                 <br />
-                <em>con le fonti in vista.</em>
+                <em>with sources in sight.</em>
               </h1>
               <p className="lead">
-                Carica documenti e fai domande. L'assistente RAG
-                recupera solo le informazioni autorizzate. Ogni risposta è
-                verificabile; se manca una fonte, si ferma.
+                Upload documents and ask questions. The RAG assistant retrieves
+                only authorized information. Every answer is verifiable; when
+                sources are insufficient, it abstains.
               </p>
               <div className="hero-tags">
                 <span>
-                  <Icon name="check" size={14} /> Citazioni verificabili
+                  <Icon name="check" size={14} /> Verifiable citations
                 </span>
                 <span>
-                  <Icon name="lock" size={14} /> Accesso per ruolo
+                  <Icon name="lock" size={14} /> Role-based access
                 </span>
                 <span>
-                  <Icon name="pulse" size={14} /> Tracing completo
+                  <Icon name="pulse" size={14} /> End-to-end tracing
                 </span>
               </div>
             </div>
@@ -353,48 +353,48 @@ function App() {
               <div className="orbit orbit-two" />
               <div className="graphic-card left-card">
                 <Icon name="file" size={20} />
-                <span>Documenti</span>
+                <span>Documents</span>
               </div>
               <div className="graphic-center">
                 <Icon name="spark" size={30} />
               </div>
               <div className="graphic-card right-card">
                 <Icon name="check" size={20} />
-                <span>Risposta</span>
+                <span>Answer</span>
               </div>
               <div className="graphic-caption">RETRIEVE → VERIFY → ANSWER</div>
             </div>
           </div>
 
-          <section className="workflow-strip" aria-label="Flusso RAG">
+          <section className="workflow-strip" aria-label="RAG workflow">
             <div>
               <b>01</b>
-              <span>Carica & indicizza</span>
+              <span>Upload & index</span>
             </div>
             <i />
             <div>
               <b>02</b>
-              <span>Filtra per ruolo</span>
+              <span>Filter by role</span>
             </div>
             <i />
             <div>
               <b>03</b>
-              <span>Recupera sezioni</span>
+              <span>Retrieve sections</span>
             </div>
             <i />
             <div>
               <b>04</b>
-              <span>Rispondi o astieniti</span>
+              <span>Answer or abstain</span>
             </div>
           </section>
 
           <section id="assistant" className="section assistant">
             <div className="section-head">
               <div>
-                <div className="eyebrow">DOMANDE E RISPOSTE</div>
-                <h2>Assistente</h2>
+                <div className="eyebrow">QUESTIONS AND ANSWERS</div>
+                <h2>Assistant</h2>
                 <p>
-                  Le fonti disponibili dipendono dal ruolo selezionato.
+                  Available sources depend on the selected role.
                 </p>
               </div>
               <span className="section-number">01 / 03</span>
@@ -406,11 +406,11 @@ function App() {
                     <Icon name="search" />
                   </div>
                   <div>
-                    <h3>Fai una domanda</h3>
-                    <p>L'accesso viene controllato prima della ricerca.</p>
+                    <h3>Ask a question</h3>
+                    <p>Access is checked before retrieval.</p>
                   </div>
                 </div>
-                <div className="field-label">RUOLO ATTIVO</div>
+                <div className="field-label">ACTIVE ROLE</div>
                 <div className="role-row">
                   {accounts.map((account) => (
                     <button
@@ -426,7 +426,7 @@ function App() {
                 {!session && (
                   <form className="login-form" onSubmit={login}>
                     <label className="field-label" htmlFor="password">
-                      PASSWORD · VEDI .ENV.EXAMPLE
+                      PASSWORD · SEE .ENV.EXAMPLE
                     </label>
                     <div className="login-row">
                       <input
@@ -434,23 +434,23 @@ function App() {
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        placeholder={`Password per ${chosenRole}`}
+                        placeholder={`Password for ${chosenRole}`}
                         required
                       />
                       <button type="submit" disabled={loading}>
-                        Accedi <Icon name="arrow" size={15} />
+                        Sign in <Icon name="arrow" size={15} />
                       </button>
                     </div>
                   </form>
                 )}
                 <form onSubmit={ask}>
                   <label className="field-label" htmlFor="question">
-                    LA TUA DOMANDA
+                    YOUR QUESTION
                   </label>
                   <textarea
                     id="question"
                     rows={4}
-                    placeholder="Es. Qual è il limite per un hotel per notte?"
+                    placeholder="E.g. What is the nightly hotel limit?"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                   />
@@ -459,12 +459,12 @@ function App() {
                     disabled={loading || !session || question.trim().length < 5}
                     type="submit"
                   >
-                    {loading ? "Sto cercando…" : "Cerca nei documenti"}
+                    {loading ? "Searching…" : "Search documents"}
                     <Icon name="arrow" size={17} />
                   </button>
                 </form>
                 <div className="suggestions">
-                  <span>PROVA UNA DOMANDA</span>
+                  <span>SUGGESTED QUESTIONS</span>
                   {prompts.map((prompt) => (
                     <button key={prompt} onClick={() => setQuestion(prompt)}>
                       {prompt}
@@ -479,8 +479,8 @@ function App() {
                     <Icon name="spark" />
                   </div>
                   <div>
-                    <h3>Risposta & fonti</h3>
-                    <p>Il risultato mostra sempre la sezione usata.</p>
+                    <h3>Answer & sources</h3>
+                    <p>Every answer identifies its source section.</p>
                   </div>
                 </div>
                 {answer ? (
@@ -490,8 +490,8 @@ function App() {
                     >
                       <Icon name={answer.abstained ? "x" : "check"} size={15} />
                       {answer.abstained
-                        ? "FONTI INSUFFICIENTI"
-                        : "RISPOSTA CON FONTE"}
+                        ? "INSUFFICIENT SOURCES"
+                        : "SOURCE-BACKED ANSWER"}
                     </div>
                     <p className="answer-text">{answer.answer}</p>
                     {answer.citations.map((citation) => (
@@ -505,17 +505,17 @@ function App() {
                         </span>
                         <span>
                           <b>{citation.title}</b>
-                          <small>Sezione: {citation.section}</small>
+                          <small>Section: {citation.section}</small>
                         </span>
                         <Icon name="arrow" size={17} />
                       </button>
                     ))}
                     <div className="answer-meta">
                       <span>
-                        Latenza <b>{answer.latency_ms} ms</b>
+                        Latency <b>{answer.latency_ms} ms</b>
                       </span>
                       <span>
-                        Costo stimato{" "}
+                        Estimated cost{" "}
                         <b>${answer.estimated_cost_usd.toFixed(4)}</b>
                       </span>
                     </div>
@@ -526,10 +526,10 @@ function App() {
                     <div className="empty-art">
                       <Icon name="spark" size={33} />
                     </div>
-                    <b>In attesa della tua domanda</b>
+                    <b>Waiting for your question</b>
                     <p>
-                      Qui compariranno la risposta, la citazione e le misure
-                      della richiesta.
+                      The answer, citation, and request metrics will appear
+                      here.
                     </p>
                   </div>
                 )}
@@ -545,11 +545,11 @@ function App() {
           <section id="documents" className="section">
             <div className="section-head">
               <div>
-                <div className="eyebrow">IL CORPUS SINTETICO</div>
-                <h2>Documenti disponibili</h2>
+                <div className="eyebrow">SYNTHETIC CORPUS</div>
+                <h2>Available documents</h2>
                 <p>
-                  Ogni ruolo vede soltanto i documenti assegnati. Aprine uno per
-                  leggere le sezioni indicizzate.
+                  Each role sees only its assigned documents. Open one to read
+                  its indexed sections.
                 </p>
               </div>
               <span className="section-number">02 / 03</span>
@@ -570,7 +570,7 @@ function App() {
                   </span>
                   <h3>{doc.title}</h3>
                   <p>
-                    {doc.sections} {doc.sections === 1 ? "sezione" : "sezioni"}{" "}
+                    {doc.sections} {doc.sections === 1 ? "section" : "sections"}{" "}
                     · {doc.filename}
                   </p>
                   <div className="doc-roles">
@@ -579,13 +579,13 @@ function App() {
                     ))}
                   </div>
                   <span className="doc-link">
-                    Esplora sezioni <Icon name="arrow" size={15} />
+                    View sections <Icon name="arrow" size={15} />
                   </span>
                 </button>
               ))}
               {docs.length === 0 && (
                 <div className="no-docs">
-                  Nessun documento visibile per questo ruolo.
+                  No documents are visible to this role.
                 </div>
               )}
             </div>
@@ -596,10 +596,10 @@ function App() {
               <div className="section-head">
                 <div>
                   <div className="eyebrow">CONTROL ROOM</div>
-                  <h2>Amministrazione</h2>
+                  <h2>Administration</h2>
                   <p>
-                    Carica un file sintetico e assegna esplicitamente i ruoli
-                    che possono leggerlo.
+                    Upload a synthetic file and assign the roles that may read
+                    it.
                   </p>
                 </div>
                 <span className="section-number">ADMIN</span>
@@ -611,18 +611,18 @@ function App() {
                       <Icon name="upload" />
                     </div>
                     <div>
-                      <h3>Nuovo documento</h3>
-                      <p>Markdown, testo o PDF · massimo 1 MB</p>
+                      <h3>New document</h3>
+                      <p>Markdown, text, or PDF · maximum 1 MB</p>
                     </div>
                   </div>
                   <label className="field-label" htmlFor="upload-title">
-                    TITOLO
+                    TITLE
                   </label>
                   <input
                     id="upload-title"
                     value={uploadTitle}
                     onChange={(e) => setUploadTitle(e.target.value)}
-                    placeholder="Es. Procedura acquisti"
+                    placeholder="E.g. Purchasing policy"
                     required
                   />
                   <label className="field-label" htmlFor="document-file">
@@ -635,7 +635,7 @@ function App() {
                     onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
                     required
                   />
-                  <div className="field-label">VISIBILE A</div>
+                  <div className="field-label">VISIBLE TO</div>
                   <div className="checkbox-row">
                     {accounts
                       .filter((a) => a.role !== "admin")
@@ -663,7 +663,7 @@ function App() {
                     disabled={loading || !uploadRoles.length}
                     type="submit"
                   >
-                    Carica e indicizza <Icon name="arrow" size={17} />
+                    Upload and index <Icon name="arrow" size={17} />
                   </button>
                 </form>
                 <div className="card stats-card">
@@ -672,44 +672,44 @@ function App() {
                       <Icon name="pulse" />
                     </div>
                     <div>
-                      <h3>Statistiche richieste</h3>
-                      <p>Solo metadati, senza testo delle domande.</p>
+                      <h3>Request statistics</h3>
+                      <p>Metadata only, without question text.</p>
                     </div>
                   </div>
                   <div className="stats-grid">
                     <div>
-                      <span>Richieste</span>
+                      <span>Requests</span>
                       <b>{stats?.requests ?? "—"}</b>
                     </div>
                     <div>
-                      <span>Astensioni</span>
+                      <span>Abstentions</span>
                       <b>{stats?.abstentions ?? "—"}</b>
                     </div>
                     <div>
-                      <span>Latenza media</span>
+                      <span>Average latency</span>
                       <b>
                         {stats?.avg_latency_ms ?? "—"} <small>ms</small>
                       </b>
                     </div>
                     <div>
-                      <span>P95 latenza</span>
+                      <span>P95 latency</span>
                       <b>
                         {stats?.p95_latency_ms ?? "—"} <small>ms</small>
                       </b>
                     </div>
                     <div>
-                      <span>Costo stimato</span>
+                      <span>Estimated cost</span>
                       <b>
                         ${Number(stats?.estimated_cost_usd ?? 0).toFixed(4)}
                       </b>
                     </div>
                     <div>
-                      <span>Documenti pronti</span>
+                      <span>Ready documents</span>
                       <b>{stats?.documents_by_status.ready ?? 0}</b>
                     </div>
                   </div>
                   <p className="stats-note">
-                    I limiti per frequenza e budget sono configurabili in{" "}
+                    Request and cost limits are configurable in{" "}
                     <code>.env</code>.
                   </p>
                 </div>
@@ -720,11 +720,11 @@ function App() {
           <section id="how-it-works" className="section methodology">
             <div className="section-head">
               <div>
-                <div className="eyebrow">SOTTO IL COFANO</div>
-                <h2>Come funziona</h2>
+                <div className="eyebrow">UNDER THE HOOD</div>
+                <h2>How it works</h2>
                 <p>
-                  Un percorso completo, visibile e sostituibile componente per
-                  componente.
+                  A complete workflow with replaceable components and visible
+                  outcomes.
                 </p>
               </div>
               <span className="section-number">03 / 03</span>
@@ -733,45 +733,45 @@ function App() {
               <div>
                 <span>01 / INGESTION</span>
                 <Icon name="upload" />
-                <h3>Dal file alle sezioni</h3>
+                <h3>From file to sections</h3>
                 <p>
-                  MinIO conserva l'originale. Il backend estrae il testo,
-                  mantiene i titoli come ancore e salva embedding e metadati in
-                  PostgreSQL.
+                  MinIO stores the original. The backend extracts text, keeps
+                  headings as citation anchors, and stores embeddings and
+                  metadata in PostgreSQL.
                 </p>
               </div>
               <div>
                 <span>02 / RETRIEVAL</span>
                 <Icon name="lock" />
-                <h3>Permessi nella query</h3>
+                <h3>Permissions in the query</h3>
                 <p>
-                  Il filtro sui ruoli è applicato nel database prima di ordinare
-                  le sezioni con la distanza coseno di pgvector.
+                  The database filters sections by role before ordering them
+                  by pgvector cosine distance.
                 </p>
               </div>
               <div>
                 <span>03 / GROUNDING</span>
                 <Icon name="check" />
-                <h3>Risposta verificabile</h3>
+                <h3>Verifiable answer</h3>
                 <p>
-                  Il provider locale sceglie una frase presente nella fonte. Se
-                  non trova evidenza sufficiente, dichiara l'astensione.
+                  The local provider selects a sentence from a source. If the
+                  evidence is insufficient, it abstains.
                 </p>
               </div>
               <div>
                 <span>04 / OBSERVABILITY</span>
                 <Icon name="pulse" />
-                <h3>Misura senza esporre</h3>
+                <h3>Measure without exposing content</h3>
                 <p>
-                  Trace OpenTelemetry per ogni fase. Le statistiche registrano
-                  ruolo, latenza e costo stimato, senza domande né risposte.
+                  OpenTelemetry traces each stage. Statistics record role,
+                  latency, and estimated cost without questions or answers.
                 </p>
               </div>
             </div>
           </section>
           <footer>
             <span>
-              KNOWLEDGE HUB <b>·</b> Documenti sintetici
+              KNOWLEDGE HUB <b>·</b> Synthetic documents
             </span>
             <span>FastAPI · pgvector · MinIO · React · OpenTelemetry</span>
           </footer>
@@ -788,10 +788,10 @@ function App() {
           >
             <div className="modal-header">
               <div>
-                <div className="eyebrow">DOCUMENTO SINTETICO</div>
+                <div className="eyebrow">SYNTHETIC DOCUMENT</div>
                 <h2>{selectedDoc.title}</h2>
               </div>
-              <button aria-label="Chiudi" onClick={() => setSelectedDoc(null)}>
+              <button aria-label="Close" onClick={() => setSelectedDoc(null)}>
                 <Icon name="x" />
               </button>
             </div>
@@ -799,7 +799,7 @@ function App() {
               {selectedDoc.sections.map((section) => (
                 <section key={section.ordinal}>
                   <span>
-                    SEZIONE {String(section.ordinal).padStart(2, "0")}
+                    SECTION {String(section.ordinal).padStart(2, "0")}
                   </span>
                   <h3>{section.heading}</h3>
                   <p>{section.content}</p>

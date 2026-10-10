@@ -1,100 +1,94 @@
 # Enterprise Knowledge Assistant
 
-Assistente RAG per documenti aziendali **interamente sintetici**. Una sola pagina riunisce upload, ricerca, citazioni, astensione, ruoli, stato dell'indicizzazione e statistiche.
+A single-page RAG assistant for an entirely **synthetic** set of enterprise documents. Administrators upload files and assign readable roles; authenticated users ask questions and receive source-backed answers or an explicit abstention. The same page includes document status and request statistics.
 
-## Funzionalità
+## How it works
 
-Il problema è semplice: una risposta su documenti interni deve essere utile **e** verificabile, senza usare informazioni che l'utente non può leggere. Questo progetto percorre l'intera catena, dal file caricato da un amministratore alla frase citata nella risposta. Include anche il caso in cui la risposta corretta è «non posso rispondere».
-
-RAG significa *Retrieval-Augmented Generation*: prima si recuperano passaggi pertinenti da un corpus, poi si produce una risposta vincolata a quei passaggi. Qui la «generazione» è volutamente **estrattiva**: il provider locale restituisce una frase presente nel documento. Non chiama un LLM e non richiede chiavi o API a pagamento. In questo modo permessi, citazioni e astensione restano facili da ispezionare.
-
-La UI è una **single page**: assistente, documenti, flusso di elaborazione e pannello amministrativo convivono nella stessa pagina. Il backend è una normale API REST.
-
-## Architettura in un colpo d'occhio
+Retrieval-Augmented Generation (RAG) retrieves relevant passages before producing an answer from them. This application uses **extractive** answering: the local answer provider returns a sentence present in an authorized document. It does not call a hosted LLM or require a paid API. The provider boundary allows a hosted model to be added without changing the upload, retrieval, or authorization contract.
 
 ```mermaid
 flowchart LR
-    U[Browser · pagina React] -->|login, upload, domande| W[Nginx]
+    U[React page] -->|login, upload, questions| W[Nginx]
     W --> A[FastAPI]
-    A -->|file originale| M[(MinIO)]
-    A -->|documenti, ruoli, sezioni, richieste| P[(PostgreSQL + pgvector)]
+    A -->|original files| M[(MinIO)]
+    A -->|documents, roles, sections, requests| P[(PostgreSQL + pgvector)]
     A --> E[EmbeddingProvider]
     A --> R[AnswerProvider]
-    A -->|span OTLP/HTTP| J[Jaeger]
-    Q[Dataset di valutazione] -->|API HTTP| A
+    A -->|OTLP/HTTP spans| J[Jaeger]
+    Q[Evaluation dataset] -->|HTTP API| A
 ```
 
-| Tecnologia | Ruolo nel progetto | Dove guardare |
+| Technology | Responsibility | Implementation |
 |---|---|---|
-| Python 3.12, FastAPI, Pydantic, Uvicorn | API tipizzata, validazione degli input, upload e ciclo di avvio | [`backend/app/main.py`](backend/app/main.py) |
-| PostgreSQL 16, psycopg 3 | Documenti, ruoli, sezioni, stati e statistiche con vincoli e transazioni | [`backend/app/storage.py`](backend/app/storage.py) |
-| pgvector | Embedding `vector(128)` e ordinamento per distanza coseno | [`backend/app/main.py`](backend/app/main.py) |
-| MinIO e MinIO Python SDK | Conservazione degli originali con API compatibile S3 | [`backend/app/storage.py`](backend/app/storage.py) |
-| pypdf | Estrazione del testo dai PDF che già contengono testo | [`backend/app/storage.py`](backend/app/storage.py) |
-| PyJWT | Token bearer firmati per gli account applicativi | [`backend/app/security.py`](backend/app/security.py) |
-| React 19, TypeScript, Vite | Stato della singola pagina, form e chiamate API tipizzate | [`frontend/src/App.tsx`](frontend/src/App.tsx) |
-| Nginx | Serve la build frontend e inoltra `/api/` al backend | [`frontend/nginx.conf`](frontend/nginx.conf) |
-| Docker Compose | Avvio riproducibile, health check, volumi e rete tra servizi | [`compose.yaml`](compose.yaml) |
-| OpenTelemetry, OTLP/HTTP, Jaeger | Trace delle fasi RAG senza includere il testo nei relativi attributi | [`backend/app/telemetry.py`](backend/app/telemetry.py) |
-| pytest, Ruff, GitHub Actions | Test unitari e di integrazione, lint e CI | [`backend/tests/`](backend/tests/), [`ci.yml`](.github/workflows/ci.yml) |
+| Python 3.12, FastAPI, Pydantic, Uvicorn | Typed REST API, input validation, upload, application lifespan | [backend/app/main.py](backend/app/main.py) |
+| PostgreSQL 16, psycopg 3 | Documents, roles, sections, request metrics, transactions | [backend/app/storage.py](backend/app/storage.py) |
+| pgvector | 128-dimensional vectors and cosine-distance retrieval | [backend/app/main.py](backend/app/main.py) |
+| MinIO and its Python SDK | Original-file storage through an S3-compatible API | [backend/app/storage.py](backend/app/storage.py) |
+| pypdf | Text extraction from PDFs that contain selectable text | [backend/app/storage.py](backend/app/storage.py) |
+| PyJWT | Signed bearer tokens for the local accounts | [backend/app/security.py](backend/app/security.py) |
+| React 19, TypeScript, Vite | State, forms, and typed API responses on one page | [frontend/src/App.tsx](frontend/src/App.tsx) |
+| Nginx | Static frontend hosting and `/api/` reverse proxy | [frontend/nginx.conf](frontend/nginx.conf) |
+| Docker Compose | Reproducible startup, health checks, volumes, service network | [compose.yaml](compose.yaml) |
+| OpenTelemetry, OTLP/HTTP, Jaeger | Traces for RAG stages without question or document text | [backend/app/telemetry.py](backend/app/telemetry.py) |
+| pytest, Ruff, GitHub Actions | Integration tests, linting, and CI | [backend/tests](backend/tests), [.github/workflows/ci.yml](.github/workflows/ci.yml) |
 
-### Dal caricamento alla risposta
+### From upload to answer
 
-1. **Upload.** L'admin invia file, titolo e ruoli tramite un form multipart. FastAPI verifica ruolo, estensione, dimensione massima di 1 MB e presenza di testo estraibile.
-2. **Originale e sezioni.** MinIO riceve il file in una chiave basata su UUID. Il backend legge Markdown/TXT in UTF-8 oppure estrae il testo di un PDF con pypdf. I titoli Markdown diventano ancore di citazione; i paragrafi lunghi vengono spezzati in parti di massimo 900 caratteri.
-3. **Indicizzazione.** Ogni sezione viene trasformata in un vettore locale di 128 dimensioni e salvata con `document_id`, ordine, titolo di sezione e contenuto. Lo stato passa da `indexing` a `ready` solo dopo l'inserimento delle sezioni.
-4. **Autenticazione e budget.** Un JWT firmato identifica il ruolo. Prima della ricerca l'API controlla numero di richieste nell'ultimo minuto e budget stimato.
-5. **Retrieval autorizzato.** La query SQL considera solo documenti `ready` visibili al ruolo (l'admin può ispezionarli tutti), ordina le sezioni per distanza coseno con `<=>` e prende le prime otto.
-6. **Risposta fondata.** Il provider locale cerca una frase con sufficiente sovrapposizione di termini rispetto alla domanda. Se la trova, restituisce quella frase e la citazione `documento → sezione`; altrimenti restituisce un'astensione con lista di citazioni vuota.
-7. **Misura.** Il backend registra latenza, costo stimato e astensione. Gli span OpenTelemetry separano embedding, retrieval e risposta; il `trace_id` nella risposta permette di trovare la richiesta in Jaeger.
+1. **Upload:** An administrator sends a file, title, and readable roles in a multipart request. The API checks the role, extension, 1 MB size limit, and extractable text.
+2. **Original and sections:** MinIO stores the file under a UUID-based key. The backend reads UTF-8 Markdown or text, or extracts PDF text with pypdf. Markdown headings become citation anchors; long paragraphs are split into chunks of at most 900 characters.
+3. **Indexing:** Each section receives a local 128-dimensional embedding and is stored with its document ID, order, heading, and text. The status changes from `indexing` to `ready` only after the sections are inserted.
+4. **Authentication and limits:** A signed JWT identifies the user and role. Before retrieval, the API checks the recent request count and estimated cost budgets.
+5. **Authorized retrieval:** SQL selects only `ready` documents visible to that role (administrators can read all documents), sorts their sections by pgvector cosine distance, and returns up to eight candidates.
+6. **Grounded answer:** The local provider looks for a sentence with sufficient term overlap. It returns that sentence as both answer and citation quote, including the document title and section. Without sufficient evidence, it returns an abstention with no citations.
+7. **Measurement:** The backend records latency, estimated cost, and abstention. OpenTelemetry spans cover embedding, retrieval, and answer selection. The returned `trace_id` links the request to Jaeger.
 
-L'ordine dei passaggi conta: il ruolo filtra le **fonti candidate**, quindi una sezione non autorizzata non può finire nel contesto da cui nasce la risposta. Il dettaglio SQL è in [docs/architecture.md](docs/architecture.md).
+The role predicate filters **candidate sources before answer selection**. Unauthorized sections never enter the answer provider's context. [Architecture details](docs/architecture.md) describe the data flow.
 
-## Avvio rapido
+## Run locally
 
-Richiede Docker con Compose v2. Da questa cartella:
+Docker with Compose v2 is required. From the repository root:
 
 ```bash
 cp .env.example .env
 docker compose up --build -d --wait
 ```
 
-Apri **http://localhost:5173**. Scegli un ruolo (`employee`, `hr`, `finance`, `admin`) e inserisci la relativa password di `.env`. I valori in `.env.example` sono destinati solo all'esecuzione locale. L'API è su **http://localhost:8000/docs**, la console MinIO su **http://localhost:9001** e i trace su **http://localhost:16686**. I servizi sono esposti solo su `127.0.0.1`.
+Open **http://localhost:5173**. Select `employee`, `hr`, `finance`, or `admin` and use the corresponding password from `.env`. The API documentation is at **http://localhost:8000/docs**, MinIO's console at **http://localhost:9001**, and Jaeger at **http://localhost:16686**. Host ports bind to `127.0.0.1` only.
 
-Al primo avvio vengono importati tre file in `data/`. L'amministratore può caricare file Markdown, TXT UTF-8 o PDF con testo estraibile, fino a 1 MB. Un PDF scansito senza OCR viene rifiutato.
+On an empty database, the application imports three synthetic files from `data/`. Administrators can upload Markdown, UTF-8 text, or PDFs with extractable text, up to 1 MB. Scanned PDFs without OCR are rejected. Seed files load only when the documents table is empty.
 
-Per fermare lo stack: `docker compose down`. Per cancellare anche i dati locali: `docker compose down -v`.
+Stop the services with `docker compose down`. To discard local volumes and reload the initial corpus, run `docker compose down -v` before starting again.
 
-### Configurazione
+### Configuration
 
-`.env.example` è il modello da copiare; `.env` è escluso da Git. Compose passa le variabili ai container. I valori d'esempio sono pubblici e vanno usati solo sul computer di sviluppo.
+Copy `.env.example` to `.env`; the latter is ignored by Git. The example values are public local defaults and must be replaced before any external exposure.
 
-| Variabile | A cosa serve |
+| Variable | Purpose |
 |---|---|
-| `POSTGRES_PASSWORD` | Password del database `knowledge` |
-| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Credenziali dello storage S3 locale |
-| `JWT_SECRET` | Chiave di firma dei token bearer |
-| `ADMIN_PASSWORD`, `HR_PASSWORD`, `FINANCE_PASSWORD`, `EMPLOYEE_PASSWORD` | Password dei quattro account locali |
-| `MAX_REQUESTS_PER_MINUTE` | Numero massimo di domande per account nell'ultimo minuto |
-| `MAX_REQUEST_COST_USD`, `MAX_DAILY_COST_USD` | Soglie sul costo stimato di una richiesta e del giorno |
-| `ESTIMATED_USD_PER_1K_TOKENS` | Prezzo ipotetico usato per stimare il costo; `0` per la modalità locale |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP/HTTP di Jaeger |
+| `POSTGRES_PASSWORD` | Password for the `knowledge` database |
+| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Credentials for local S3-compatible storage |
+| `JWT_SECRET` | Bearer-token signing key |
+| `ADMIN_PASSWORD`, `HR_PASSWORD`, `FINANCE_PASSWORD`, `EMPLOYEE_PASSWORD` | Passwords for the four local accounts |
+| `MAX_REQUESTS_PER_MINUTE` | Maximum questions per account in the preceding minute |
+| `MAX_REQUEST_COST_USD`, `MAX_DAILY_COST_USD` | Estimated per-request and daily cost ceilings |
+| `ESTIMATED_USD_PER_1K_TOKENS` | Assumed cost per thousand tokens; `0` for the local provider |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Jaeger's OTLP/HTTP endpoint |
 
-Le porte esposte dall'host sono `5173` (pagina), `8000` (API), `9001` (console MinIO), `16686` (Jaeger) e `5432` (PostgreSQL), tutte legate a `127.0.0.1`. L'API S3 di MinIO (`9000`) resta nella rete Compose.
+The host exposes ports `5173` (web), `8000` (API), `9001` (MinIO console), `16686` (Jaeger), and `5432` (PostgreSQL), all on `127.0.0.1`. MinIO's S3 API on port `9000` stays within the Compose network.
 
-## Flusso operativo
+### End-to-end flow
 
-1. Scegli **Dipendente** e chiedi «Qual è il limite per un hotel per notte?». La risposta deve citare *Trasferte e rimborsi → Pernottamento*.
-2. Scegli **Team HR** e chiedi del congedo parentale. La fonte è *Manuale persone → Congedo parentale*.
-3. Ripeti la domanda come **Dipendente**: il manuale HR non è visibile e l'assistente si astiene.
-4. Scegli **Admin**, carica un documento fittizio, assegna i ruoli e osserva stato, sezioni e statistiche sulla stessa pagina.
-5. Apri Jaeger e cerca il servizio `enterprise-knowledge-api`: gli span mostrano ingestione, embedding, retrieval e generazione senza testo di domande o documenti.
+1. As **Employee**, ask "What is the nightly hotel limit?" The answer cites *Travel and Expense Policy → Accommodation*.
+2. As **HR**, ask when a parental leave request is due. The source is *People Handbook → Parental leave*.
+3. Ask the same question as **Employee**. The HR handbook is unavailable, so the assistant abstains.
+4. As **Admin**, upload a synthetic document, assign readable roles, and inspect its status, sections, and request statistics on the same page.
+5. In Jaeger, inspect `enterprise-knowledge-api` to see ingestion, embedding, retrieval, and answer spans without question or document text.
 
-Lo script `bash scripts/run-flow.sh` esegue upload → domanda → statistiche via HTTP e legge le credenziali da `.env`.
+Run `bash scripts/run-flow.sh` to execute upload → question → statistics through HTTP using credentials from `.env`.
 
-## Test e valutazione
+## Tests and evaluation
 
-Con lo stack avviato:
+With the stack running:
 
 ```bash
 docker compose exec -T api pytest -q tests
@@ -102,28 +96,28 @@ docker compose exec -T api ruff check app tests
 python3 scripts/evaluate.py
 ```
 
-I test di integrazione verificano upload, indicizzazione, separazione dei ruoli, citazione della sezione e astensione. `data/questions.json` contiene domande con risposte attese e due casi senza risposta. La valutazione misura:
+Integration tests cover upload, indexing, role separation, section citations, and abstention. [data/questions.json](data/questions.json) contains expected answers and two unanswerable cases. Evaluation reports:
 
-| Misura | Definizione |
+| Metric | Definition |
 |---|---|
-| Correttezza delle citazioni | Risposta contenente il fatto atteso, titolo e sezione corretti, citazione uguale alla frase resa |
-| Astensione corretta | Nessuna risposta attribuita né citazione per domande non supportate o fuori permesso |
-| Latenza | Media e p95 dei tempi restituiti dall'API |
-| Costo stimato | Somma del prezzo configurato per i token stimati; con provider locale il default è $0 |
+| Citation correctness | Expected fact, document, and section match; the quote equals the answer sentence |
+| Correct abstention | No attributed answer or citation for an unsupported or unauthorized question |
+| Latency | Mean and p95 API response times |
+| Estimated cost | Sum of configured token-price estimates; the local default is $0 |
 
-Il workflow GitHub Actions costruisce lo stack, esegue lint, test e valutazione, mostra i log in caso di errore e rimuove i volumi in ogni caso. I dati dei test sono sintetici. L'output di `evaluate.py` è volutamente leggibile anche senza dashboard: mostra ogni caso, le due frazioni di qualità, media e p95 della latenza, e il costo stimato totale.
+GitHub Actions builds the stack and runs lint, tests, and evaluation on pushes and pull requests. The workflow prints service logs on failure and removes its volumes afterward. Evaluation output lists each case and the aggregate metrics.
 
-## Modello dei dati e pattern applicati
+## Data model and design choices
 
-### File originali separati dall'indice
+### Separate original files from the retrieval index
 
-MinIO conserva i byte del file. PostgreSQL conserva ciò che serve per autorizzare, cercare e citare. La tabella `documents` contiene `id`, titolo, nome e chiave dell'oggetto, ruoli e stato; `sections` contiene ordine, titolo, testo ed embedding e ha una foreign key verso il documento. La tabella `requests` contiene soltanto metadati operativi. L'UUID nella chiave MinIO collega originale e record SQL senza affidarsi al nome del file.
+MinIO stores original bytes. PostgreSQL stores what the application needs to authorize, search, and cite. `documents` holds the ID, title, filename, object key, roles, and status. `sections` holds order, heading, text, and embedding, with a foreign key to its document. `requests` holds operational metadata only. The UUID in the MinIO key associates the object with its SQL record without relying on the filename.
 
-Questa separazione evita di trattare il database vettoriale come archivio dei file. Mostra anche un limite reale dei sistemi con due storage: il caricamento su MinIO e la transazione PostgreSQL **non** sono atomici tra loro. Se il database fallisce dopo l'upload, può restare un oggetto orfano. In produzione servirebbero pulizia periodica o un flusso compensativo.
+The two storage systems do not share a transaction. If a database write fails after an upload, an orphaned MinIO object may remain. A production system would need periodic cleanup or a compensating workflow.
 
-### Repository SQL e vincoli come parte della sicurezza
+### Enforce access in SQL
 
-L'autorizzazione non è soltanto un filtro grafico in React. `current_user` e `admin_user` sono dipendenze FastAPI: proteggono le route prima della logica applicativa. Anche la lettura di un documento per ID ricontrolla il ruolo. Per la ricerca, il predicato è nella query al database:
+FastAPI's `current_user` and `admin_user` dependencies protect routes before application logic runs. Reading a document by ID checks the role again. Retrieval applies the predicate in the database:
 
 ```sql
 SELECT s.document_id, d.title, s.heading, s.content
@@ -135,81 +129,66 @@ ORDER BY s.embedding <=> :question_vector
 LIMIT 8;
 ```
 
-Il frammento mostra la logica; il codice usa parametri `%s` di psycopg, non interpola valori dell'utente nella stringa SQL. `<=>` è la distanza coseno di pgvector: minore significa più vicino. La query usa una ricerca **esatta**; non c'è un indice ANN/HNSW, perché il corpus iniziale è piccolo e la semantica dei permessi resta leggibile. Lo schema include un indice GIN su `roles`, ma la forma attuale del predicato `= ANY(...)` non presuppone che il planner lo utilizzi. Su dati grandi occorrerebbe misurare piano di esecuzione, recall e costo di un eventuale indice approssimato.
+This excerpt shows the logic; the implementation binds values through psycopg `%s` parameters. pgvector's `<=>` is cosine distance, so smaller values rank first. Search is exact: the initial corpus is small, and the access predicate remains easy to inspect. The schema has a GIN index on `roles`, but the current `= ANY(...)` predicate does not assume the planner will use it. Larger corpora require measured query plans, recall, and approximate-index tradeoffs.
 
-Le foreign key impediscono sezioni senza documento; le transazioni fanno sì che sezioni e stato `ready` siano aggiornati insieme. Se l'indicizzazione fallisce, il documento passa a `failed` in una nuova transazione. Lo schema e il bucket vengono creati all'avvio solo se assenti; i documenti iniziali vengono caricati quando la tabella è vuota.
+Foreign keys prevent orphaned sections. A transaction inserts the sections and changes status to `ready` together. If indexing fails, a separate transaction marks the document `failed`. The schema and bucket are created if absent; the initial documents load only when the table is empty.
 
-### Porte per embedding e risposte
+### Provider boundaries and grounding
 
-`EmbeddingProvider` e `AnswerProvider` sono `Protocol` Python. Il codice di ingestione e la route `/api/ask` dipendono da quelle interfacce; le istanze concrete sono collegate in [`backend/app/rag.py`](backend/app/rag.py). È il pattern **ports and adapters** in forma ridotta: per collegare un provider LLM si implementa un nuovo adapter e si cambia il punto di composizione, mantenendo invariati contratto HTTP, modello dati e filtro dei ruoli.
+`EmbeddingProvider` and `AnswerProvider` are Python `Protocol` interfaces. Ingestion and `/api/ask` depend on those contracts; [backend/app/rag.py](backend/app/rag.py) wires the concrete local providers. This small **ports and adapters** boundary permits a hosted LLM or embedding service without changing the HTTP contract, data model, or role filter.
 
-Il provider locale `HashEmbedding` normalizza le parole, rimuove alcune stopword, assegna ogni termine a una posizione firmata tramite SHA-256 e normalizza il vettore. Documenti e domande condividono così lo stesso spazio a 128 dimensioni. È *feature hashing*, non un embedding semantico addestrato: parole diverse ma sinonime non diventano necessariamente vicine. La dimensione è parte dello schema `vector(128)`; cambiare provider o dimensione richiede reindicizzare le sezioni.
+`HashEmbedding` applies signed feature hashing: it normalizes words, removes stopwords, assigns each term a SHA-256-derived vector position, and normalizes the 128-dimensional result. Documents and questions share that space. It is not a trained semantic embedding: synonyms may remain far apart. Changing provider or dimension requires re-indexing; the dimension is part of the `vector(128)` schema.
 
-`ExtractiveAnswer` confronta i termini della domanda con le frasi delle sezioni recuperate. Richiede almeno due termini in comune quando la domanda lo consente e una copertura minima del 55%. Se una frase supera la soglia, **risposta e citazione riportano la stessa frase**; se nessuna la supera, restituisce «Non posso rispondere con le fonti disponibili» e nessuna citazione. Questa è una semplice regola di *grounding* e astensione, non una garanzia generale contro risposte errate.
+`ExtractiveAnswer` compares question terms with sentences in the retrieved sections. It requires at least two shared terms when possible and a minimum 55% term coverage. A passing sentence becomes both the answer and citation quote. Otherwise the provider says "I can't answer from the available sources" and returns no citation. This is a transparent grounding rule, not a general guarantee against incorrect answers.
 
-### Autenticazione e RBAC
+### Authentication and single-page state
 
-`/api/login` riceve username e password tramite il form previsto da FastAPI per il password flow e rilascia un JWT HS256 valido otto ore. Il token contiene utente, ruolo e scadenza. L'app usa quattro account fissi (`admin`, `hr`, `finance`, `employee`), con password e chiave di firma lette da variabili d'ambiente. Il **role-based access control** (RBAC) è applicato dalle API; l'autenticazione non include un identity provider OAuth2 aziendale. L'admin può caricare, consultare tutti i documenti e leggere le statistiche; gli altri ruoli vedono soltanto i documenti loro assegnati.
+`/api/login` accepts the FastAPI password-flow form and issues an HS256 JWT valid for eight hours. It includes username, role, and expiry. The application has four fixed accounts (`admin`, `hr`, `finance`, `employee`), with passwords and the signing key read from environment variables. This is role-based access control (RBAC), not an enterprise identity provider. Administrators upload and inspect all documents and statistics; other roles see only assigned documents.
 
-Il frontend non conserva password nel codice. La selezione di un nuovo ruolo azzera la sessione locale e chiede una nuova autenticazione. Le API effettuano sempre la verifica effettiva: nascondere un pulsante nella pagina non concede né revoca accesso.
+The frontend does not embed passwords. Switching roles clears the local session and requires a new login. API authorization remains authoritative regardless of which controls the page shows. React stores session, selected role, question, answer, visible documents, statistics, and errors in component state. Typed API response shapes (`Answer`, `Citation`, `Document`, `Stats`) keep the single page coherent. Vite builds the frontend; Nginx serves it and proxies `/api/`.
 
-### Single page con stato esplicito
+### Observability and limits without content logging
 
-React mantiene nello stato la sessione, il ruolo scelto, la domanda, la risposta, i documenti visibili, le statistiche e gli errori. Gli input sono controllati; login, upload e domanda inviano richieste dai rispettivi event handler. TypeScript descrive le risposte API (`Answer`, `Citation`, `Document`, `Stats`) e aiuta a mantenere coerente la UI. Vite compila il frontend; Nginx serve i file statici e fa da reverse proxy per `/api/`. Non serve un router: anche la vista admin è una sezione della stessa pagina.
+OpenTelemetry creates spans for `document.ingest`, `rag.answer`, `rag.embed`, `rag.retrieve`, and `rag.generate`. The Python OTLP/HTTP exporter sends them to Jaeger. Span attributes include counts, sizes, role, and abstention status, never questions, answers, or document text. HTTP logs contain method, route template, status, and duration. The `requests` table feeds admin totals, abstentions, average and p95 latency, estimated cost, and document status counts.
 
-### Osservabilità senza contenuti
+Per-account request frequency, per-request estimated cost, and daily estimated cost are configurable in `.env`. Token usage is estimated as `(question characters + 1200) / 4`, multiplied by the configured price per thousand tokens. The local default price is zero. These values are estimates, not provider invoices; the rate and budget checks are not atomic under high concurrency.
 
-OpenTelemetry crea span manuali per `document.ingest`, `rag.answer`, `rag.embed`, `rag.retrieve` e `rag.generate`. `TracerProvider`, `BatchSpanProcessor` ed exporter OTLP/HTTP spediscono i trace a Jaeger. Gli attributi sono conteggi, dimensioni, ruolo e stato di astensione; domande, risposte e testo dei documenti non vengono aggiunti agli span. Il middleware applicativo registra metodo, template della route, stato HTTP e durata. La tabella `requests` alimenta la schermata admin con numero di richieste, astensioni, latenza media e p95 e costo stimato.
+## Limitations
 
-I limiti sono configurabili in `.env`: richieste per minuto per account, costo massimo per richiesta e budget giornaliero. La stima usa `(caratteri domanda + 1200) / 4` token e il prezzo configurato per mille token. Con il provider locale il prezzo predefinito è zero. Il valore è una **stima interna**, non il costo fatturato da un provider né un rate limiter atomico per carichi concorrenti.
+Accounts are fixed and default passwords are public. Change `.env` before exposing any service. Enterprise authentication, user administration, and secret rotation are outside the current scope. Synchronous indexing keeps `ready` immediately meaningful but would need a queue and retries for larger workloads. PDF chunks do not retain page numbers, and there is no OCR. Lexical matching can abstain on synonyms or complex paraphrases. The SQL budget check does not reserve spend atomically. Untrusted files would require parser isolation, malware scanning, and additional controls.
 
-### Test come contratto del comportamento
+The pinned MinIO image is a community build from [coollabsio/minio](https://github.com/coollabsio/minio). Its provenance and maintenance should be reviewed before a production deployment.
 
-I test unitari coprono divisione in sezioni, ripetibilità dell'embedding, citazione letterale e astensione. I test di integrazione usano l'API contro PostgreSQL e MinIO di Compose: caricano un documento sintetico, controllano `ready`, verificano che un ruolo autorizzato lo citi e che un altro ruolo non lo veda né lo usi. Il dataset in `data/questions.json` rende ripetibili le misure di correttezza e astensione. GitHub Actions ripete build, lint, test e valutazione su `push` e `pull_request`.
+## API
 
-## Limiti intenzionali
+Interactive OpenAPI documentation is available at `http://localhost:8000/docs`.
 
-Gli account sono fissi e le password predefinite sono pubbliche; cambiare `.env` è necessario prima di qualunque esposizione esterna. Autenticazione aziendale, gestione utenti e rotazione dei segreti sono fuori ambito. L'indicizzazione è sincrona: rende lo stato `ready` immediatamente verificabile ma un corpus grande richiederebbe una coda e retry. Il chunking dei PDF non conserva la pagina e non fa OCR. Il provider locale usa parole condivise, quindi parafrasi complesse e sinonimi possono portare ad astensioni. Il budget giornaliero è misurato in SQL senza prenotazioni atomiche e non è adatto a richieste concorrenti ad alto volume. Per file non affidabili servirebbe isolamento del parser, antivirus e controlli aggiuntivi.
-
-L'immagine MinIO è una build community di [coollabsio/minio](https://github.com/coollabsio/minio) fissata a una release, perché le immagini ufficiali non sono più scaricabili anonimamente. Per un sistema reale va valutata la provenienza e la manutenzione dell'immagine.
-
-## API essenziali
-
-La documentazione OpenAPI interattiva è disponibile su `http://localhost:8000/docs`.
-
-| Endpoint | Scopo | Accesso |
+| Endpoint | Purpose | Access |
 |---|---|---|
-| `POST /api/login` | Riceve `username` e `password` come form e restituisce un token di otto ore | Pubblico |
-| `GET /api/me` | Restituisce identità e ruolo del token | Autenticato |
-| `POST /api/documents` | Carica `file`, `title`, `roles` separati da virgola e indicizza | Admin |
-| `GET /api/documents` | Elenca metadati e stato dei documenti visibili | Autenticato |
-| `GET /api/documents/{id}` | Legge le sezioni di un documento autorizzato | Autenticato |
-| `POST /api/ask` | Riceve `{ "question": "..." }` e restituisce risposta, citazioni, astensione, latenza, costo stimato e trace ID | Autenticato |
-| `GET /api/admin/stats` | Aggrega richieste, astensioni, latenza, costo e stati | Admin |
-| `GET /health` | Health check per Compose | Pubblico locale |
+| `POST /api/login` | Form username and password; returns an eight-hour token | Public |
+| `GET /api/me` | Current identity and role | Authenticated |
+| `POST /api/documents` | Upload `file`, `title`, and comma-separated `roles`; index sections | Admin |
+| `GET /api/documents` | List visible documents and indexing status | Authenticated |
+| `GET /api/documents/{id}` | Read authorized document sections | Authenticated |
+| `POST /api/ask` | Question → answer, citations, abstention, latency, estimated cost, trace ID | Authenticated |
+| `GET /api/admin/stats` | Request, cost, latency, and document-status aggregates | Admin |
+| `GET /health` | Compose health check | Local public |
 
-## Come sostituire il provider locale
+## Adding a hosted provider
 
-Per sperimentare con un servizio di embedding o con un LLM, implementa le interfacce `EmbeddingProvider` e `AnswerProvider` e collegale in `backend/app/rag.py`. Mantieni la dimensione di `vector(128)` oppure migra lo schema e reindicizza tutti i documenti: vettori di modelli diversi non sono direttamente confrontabili. Metti chiavi e prezzi del servizio in variabili d'ambiente, poi aggiorna il dataset di valutazione con domande parafrasate e casi difficili.
+Implement `EmbeddingProvider` and `AnswerProvider` and wire them in `backend/app/rag.py`. Keep `vector(128)` only if the new embedding has the same dimension and compatible representation; otherwise migrate the schema and re-index every section. Put provider credentials and prices in environment variables. Expand the evaluation dataset with paraphrases and harder abstention cases.
 
-Un adapter generativo deve ricevere soltanto sezioni già autorizzate. Deve inoltre verificare che ogni citazione restituita punti a una sezione recuperata e che la risposta abbia supporto nella fonte. Il controllo lessicale attuale non è sufficiente per un LLM libero: questa è la parte in cui servono valutazione, gestione di istruzioni malevole nei documenti e soglie di astensione calibrate.
+A generative adapter must receive only authorized sections. Validate that every returned citation points to a retrieved section and that each answer claim has source support. The current lexical check is insufficient for unconstrained generation; prompt injection in documents, citation validation, and calibrated abstention thresholds need explicit evaluation.
 
-## Implementazione per incrementi
+## Repository map
 
-1. **Percorso completo**: upload, estrazione, sezioni, embedding, pgvector, risposta estrattiva citata.
-2. **Permessi**: JWT per ruolo, filtro SQL, endpoint documento protetto e test di separazione.
-3. **Valutazione**: dataset con attesi e astensioni, script ripetibile, soglie di test.
-4. **Osservabilità**: span OpenTelemetry, Jaeger, statistiche e limiti configurabili.
+1. [data](data) contains the invented corpus and expected-answer dataset.
+2. [backend/app/rag.py](backend/app/rag.py) defines provider interfaces, local retrieval features, answer selection, and text chunking.
+3. [backend/app/storage.py](backend/app/storage.py) handles SQL, MinIO, and indexing.
+4. [backend/app/security.py](backend/app/security.py) and [backend/app/main.py](backend/app/main.py) implement authentication, authorization, and the API.
+5. [frontend/src/App.tsx](frontend/src/App.tsx) connects those flows on one page.
+6. [backend/tests](backend/tests), [scripts/evaluate.py](scripts/evaluate.py), and [CI](.github/workflows/ci.yml) verify behavior.
 
-## Percorso di lettura del codice
+## References
 
-1. [`data/`](data/) contiene il corpus e le domande attese: il dominio è inventato e piccolo.
-2. [`backend/app/rag.py`](backend/app/rag.py) contiene le interfacce, l'embedding locale, la scelta della frase e il chunking.
-3. [`backend/app/storage.py`](backend/app/storage.py) mostra schema SQL, MinIO e indicizzazione.
-4. [`backend/app/security.py`](backend/app/security.py) e [`backend/app/main.py`](backend/app/main.py) mostrano autenticazione, autorizzazione e API.
-5. [`frontend/src/App.tsx`](frontend/src/App.tsx) collega i flussi alla single page.
-6. [`backend/tests/`](backend/tests/), [`scripts/evaluate.py`](scripts/evaluate.py) e [`ci.yml`](.github/workflows/ci.yml) contengono test, valutazione e workflow CI.
-
-## Riferimenti
-
-Le API e i concetti usati sono descritti nella documentazione di [FastAPI](https://fastapi.tiangolo.com/), [React](https://react.dev/), [PostgreSQL 16](https://www.postgresql.org/docs/16/), [pgvector](https://github.com/pgvector/pgvector), [MinIO Python SDK](https://github.com/minio/minio-py), [Docker Compose](https://docs.docker.com/compose/), [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/) e [GitHub Actions](https://docs.github.com/en/actions).
+The underlying APIs and concepts are documented by [FastAPI](https://fastapi.tiangolo.com/), [React](https://react.dev/), [PostgreSQL 16](https://www.postgresql.org/docs/16/), [pgvector](https://github.com/pgvector/pgvector), [MinIO Python SDK](https://github.com/minio/minio-py), [Docker Compose](https://docs.docker.com/compose/), [OpenTelemetry Python](https://opentelemetry.io/docs/languages/python/), and [GitHub Actions](https://docs.github.com/en/actions).

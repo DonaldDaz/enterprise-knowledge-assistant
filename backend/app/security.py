@@ -28,10 +28,10 @@ def current_user(token: str = Depends(bearer)) -> dict:
             raise ValueError("invalid role")
         return {"username": payload["sub"], "role": payload["role"]}
     except (jwt.PyJWTError, ValueError) as exc:
-        raise HTTPException(401, "Sessione non valida", headers={"WWW-Authenticate": "Bearer"}) from exc
+        raise HTTPException(401, "Invalid session", headers={"WWW-Authenticate": "Bearer"}) from exc
 
 
 def admin_user(user: dict = Depends(current_user)) -> dict:
     if user["role"] != "admin":
-        raise HTTPException(403, "Accesso riservato agli amministratori")
+        raise HTTPException(403, "Administrator access required")
     return user

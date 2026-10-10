@@ -57,20 +57,20 @@ def ingest(title: str, filename: str, data: bytes, roles: list[str], *, document
     document_id = document_id or uuid4()
     suffix = Path(filename).suffix.lower()
     if suffix not in (".md", ".txt", ".pdf"):
-        raise ValueError("Sono supportati soltanto .md, .txt e .pdf")
+        raise ValueError("Only .md, .txt, and .pdf files are supported")
     if suffix == ".pdf":
         try:
             text = "\n\n".join(page.extract_text() or "" for page in PdfReader(BytesIO(data)).pages)
         except Exception as exc:
-            raise ValueError("PDF non leggibile") from exc
+            raise ValueError("The PDF could not be read") from exc
     else:
         try:
             text = data.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError("Il file deve essere UTF-8") from exc
+            raise ValueError("The file must be UTF-8 encoded") from exc
     parts = sections_from_text(text, suffix)
     if not parts or not any(content.strip() for _, content in parts):
-        raise ValueError("Il documento non contiene testo estraibile")
+        raise ValueError("The document contains no extractable text")
 
     key = f"{document_id}/{Path(filename).name}"
     store = object_store()
@@ -84,7 +84,7 @@ def ingest(title: str, filename: str, data: bytes, roles: list[str], *, document
             db.execute("UPDATE documents SET status='ready' WHERE id=%s", (document_id,))
     except Exception:
         with connection() as db:
-            db.execute("UPDATE documents SET status='failed', error='Indicizzazione non riuscita' WHERE id=%s", (document_id,))
+            db.execute("UPDATE documents SET status='failed', error='Indexing failed' WHERE id=%s", (document_id,))
         raise
     return document_id, len(parts)
 
@@ -95,9 +95,9 @@ def seed_documents(data_dir: Path):
     if existing:
         return
     for name, title, roles in [
-        ("travel-policy.md", "Trasferte e rimborsi", ["employee", "hr", "finance"]),
-        ("people-handbook.md", "Manuale persone", ["hr"]),
-        ("budget-policy.md", "Budget di progetto", ["finance"]),
+        ("travel-policy.md", "Travel and Expense Policy", ["employee", "hr", "finance"]),
+        ("people-handbook.md", "People Handbook", ["hr"]),
+        ("budget-policy.md", "Project Budget Policy", ["finance"]),
     ]:
         path = data_dir / name
         ingest(title, name, path.read_bytes(), roles)

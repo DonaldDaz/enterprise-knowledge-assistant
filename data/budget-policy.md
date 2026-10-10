@@ -1,7 +1,7 @@
-# Approvazione budget
+# Budget approval
 
-Le spese di progetto superiori a 5000 euro richiedono l'approvazione del responsabile Finance. Il budget trimestrale viene rivisto il primo lunedì del trimestre.
+Project expenses above 5,000 euros require approval from the Finance manager. The quarterly budget is reviewed on the first Monday of each quarter.
 
-# Centro di costo
+# Cost center
 
-Ogni acquisto deve indicare il centro di costo del progetto prima dell'emissione dell'ordine.
+Every purchase must identify the project cost center before the order is placed.

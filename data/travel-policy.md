@@ -1,11 +1,11 @@
-# Prenotazione delle trasferte
+# Travel booking
 
-Le trasferte devono essere approvate dal responsabile prima della prenotazione. I biglietti ferroviari si acquistano in seconda classe tramite il portale interno.
+Business travel must be approved by a manager before booking. Train tickets are purchased in second class through the internal portal.
 
-# Rimborso delle spese
+# Expense reimbursement
 
-Le spese di viaggio si rimborsano entro 30 giorni dalla presentazione della nota spese. La ricevuta è obbligatoria per ogni spesa superiore a 25 euro.
+Travel expenses are reimbursed within 30 days of submitting an expense report. A receipt is required for every expense above 25 euros.
 
-# Pernottamento
+# Accommodation
 
-Il limite per un hotel è di 140 euro per notte, salvo autorizzazione scritta del responsabile.
+The nightly hotel limit is 140 euros unless a manager gives written approval.

@@ -1,29 +1,29 @@
-# Architettura
+# Architecture
 
 ```mermaid
 flowchart LR
-    Browser[Pagina React / TypeScript] -->|JWT, upload, domanda| API[FastAPI]
-    API -->|originale| MinIO[(MinIO)]
-    API -->|metadati, sezioni, ruoli| PG[(PostgreSQL + pgvector)]
-    API -->|embedding locale| EP[EmbeddingProvider]
-    API -->|frase verificabile| AP[AnswerProvider]
-    API -->|span OTLP senza contenuto| Jaeger[Jaeger]
-    Eval[Dataset di valutazione] -->|API HTTP| API
+    Browser[React / TypeScript page] -->|JWT, upload, question| API[FastAPI]
+    API -->|original file| MinIO[(MinIO)]
+    API -->|metadata, sections, roles| PG[(PostgreSQL + pgvector)]
+    API -->|local embedding| EP[EmbeddingProvider]
+    API -->|source-backed sentence| AP[AnswerProvider]
+    API -->|content-free OTLP spans| Jaeger[Jaeger]
+    Eval[Evaluation dataset] -->|HTTP API| API
 ```
 
-## Ingestione
+## Ingestion
 
-1. L'amministratore seleziona il file e assegna uno o più ruoli.
-2. L'API valida dimensione, tipo e testo estraibile. L'originale va in MinIO con una chiave UUID.
-3. Il parser divide Markdown e testo sui titoli; i PDF in paragrafi. Il limite di 900 caratteri mantiene i segmenti piccoli e citabili.
-4. Un embedding deterministico a 128 dimensioni è salvato nella colonna `vector(128)` di pgvector. Lo stato `ready` viene impostato dopo l'inserimento delle sezioni.
+1. An administrator selects a file and assigns one or more readable roles.
+2. The API validates its size, type, and extractable text. MinIO stores the original under a UUID-based key.
+3. The parser splits Markdown and text at headings and PDFs at paragraph boundaries. The 900-character limit keeps sections small enough to cite.
+4. A deterministic 128-dimensional embedding is stored in a pgvector `vector(128)` column. The status changes to `ready` only after sections are inserted.
 
-## Domanda
+## Question answering
 
-1. Il token firmato identifica il ruolo. Il backend controlla frequenza e budget stimato.
-2. La query SQL unisce sezioni e documenti, impone `role = ANY(documents.roles)` (o il ruolo amministratore) e ordina le sole sezioni ammesse con la distanza coseno `<=>`.
-3. Il provider locale sceglie una frase del corpus con sufficiente sovrapposizione lessicale. Restituisce la stessa frase come risposta e citazione.
-4. Se non esiste evidenza sufficiente, il provider restituisce un'astensione e nessuna citazione.
-5. Il backend salva solo ruolo, latenza, astensione e costo stimato; OpenTelemetry registra solo conteggi e stati delle fasi.
+1. A signed token identifies the role. The backend checks request frequency and estimated cost limits.
+2. The SQL query joins sections and documents, applies `role = ANY(documents.roles)` (or the administrator role), and orders only authorized sections by cosine distance (`<=>`).
+3. The local provider selects a sentence with sufficient lexical overlap and returns the same sentence as the answer and citation quote.
+4. If no sentence has enough support, it abstains and returns no citations.
+5. The backend stores only role, latency, abstention, and estimated cost. OpenTelemetry spans contain counts and stage status, not document or question text.
 
-La ricerca esatta senza indice ANN è deliberata: su tre documenti sintetici è più facile verificare che il filtro di accesso preceda l'ordinamento. Su un corpus grande servirebbero indici, benchmark e una strategia di filtro e recall misurata.
+Exact search is appropriate for the small synthetic corpus. A larger corpus would require measured index choices, query plans, recall, and the effect of role filtering on retrieval.

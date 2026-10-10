@@ -19,13 +19,13 @@ def test_upload_index_permissions_citations_and_abstention():
         admin = login(client, "admin")
         hr = login(client, "hr")
         finance = login(client, "finance")
-        title = f"Regola sintetica {uuid4().hex[:8]}"
-        badge = f"zaffiro{uuid4().hex[:8]}"
+        title = f"Synthetic policy {uuid4().hex[:8]}"
+        badge = f"sapphire{uuid4().hex[:8]}"
         upload = client.post(
             "/api/documents",
             headers=admin,
             data={"title": title, "roles": "hr"},
-            files={"file": ("speciale.md", f"# Badge di prova\n\nIl badge {badge} si rinnova ogni 17 giorni.".encode(), "text/markdown")},
+            files={"file": ("badge-policy.md", f"# Badge renewal\n\nThe badge {badge} is renewed every 17 days.".encode(), "text/markdown")},
         )
         assert upload.status_code == 201, upload.text
         document_id = upload.json()["id"]
@@ -37,18 +37,18 @@ def test_upload_index_permissions_citations_and_abstention():
         assert all(doc["id"] != document_id for doc in client.get("/api/documents", headers=finance).json())
         assert client.get(f"/api/documents/{document_id}", headers=finance).status_code == 404
 
-        question = {"question": f"Ogni quanti giorni si rinnova il badge {badge}?"}
+        question = {"question": f"How many days until the badge {badge} is renewed?"}
         answer = client.post("/api/ask", headers=hr, json=question).json()
         assert not answer["abstained"], answer
-        assert "17 giorni" in answer["answer"]
+        assert "17 days" in answer["answer"]
         assert answer["citations"][0]["document_id"] == document_id
-        assert answer["citations"][0]["section"] == "Badge di prova"
+        assert answer["citations"][0]["section"] == "Badge renewal"
         assert answer["citations"][0]["quote"] == answer["answer"]
 
         hidden = client.post("/api/ask", headers=finance, json=question).json()
         assert hidden["abstained"]
         assert hidden["citations"] == []
-        unknown = client.post("/api/ask", headers=hr, json={"question": f"Quale pianeta ospita il badge {badge}?"}).json()
+        unknown = client.post("/api/ask", headers=hr, json={"question": f"Which planet issued the badge {badge}?"}).json()
         assert unknown["abstained"]
 
 
